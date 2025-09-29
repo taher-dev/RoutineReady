@@ -43,20 +43,20 @@ export function ExportButtons({ routineData, tableRef }: ExportButtonsProps) {
             valign: 'middle',
           },
           headStyles: {
-            fillColor: 'hsl(141, 43%, 71%)', 
-            textColor: 'hsl(141, 25%, 15%)',
+            fillColor: [148, 211, 172], // primary: hsl(141, 43%, 71%)
+            textColor: [32, 56, 42], // primary-foreground: hsl(141, 25%, 15%)
             fontStyle: 'bold',
           },
           didParseCell: (data) => {
              // Color the day cells
             if (data.column.index === 0 && data.row.section === 'body') {
-                data.cell.styles.fillColor = 'hsl(0, 0%, 96%)';
-                data.cell.styles.textColor = 'hsl(240, 10%, 3.9%)';
+                data.cell.styles.fillColor = [245, 245, 245]; // background: hsl(0, 0%, 96%)
+                data.cell.styles.textColor = [25, 25, 28]; // foreground: hsl(240, 10%, 3.9%)
                 data.cell.styles.fontStyle = 'bold';
             }
             // Color the course cells
             if (data.cell.raw && (data.cell.raw as HTMLElement).hasAttribute('data-course-cell')) {
-                 data.cell.styles.fillColor = 'hsla(141, 73%, 90%, 0.4)';
+                 data.cell.styles.fillColor = [208, 240, 221]; // A lighter shade of primary
                  data.cell.styles.fontStyle = 'normal';
                  // Custom parsing for course content to make it look nice
                  const courseCell = data.cell.raw as HTMLElement;

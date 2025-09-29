@@ -186,8 +186,8 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
   const exportToImage = async () => {
     setIsExporting('image');
     
-    const elementToCapture = getTargetElement();
-    if (!elementToCapture) {
+    const originalElement = getTargetElement();
+    if (!originalElement) {
       toast({
         variant: 'destructive',
         title: 'Export Failed',
@@ -197,36 +197,33 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
       return;
     }
 
-    // Create a temporary container for the image output.
-    const container = document.createElement('div');
-    container.style.padding = '20px';
-    container.style.background = 'white';
-    container.style.fontFamily = "'PT Sans', sans-serif";
-
-    // Add a title to the container
+    const captureContainer = document.createElement('div');
+    captureContainer.id = 'image-capture-container';
+    captureContainer.style.position = 'absolute';
+    captureContainer.style.left = '-9999px'; // Position off-screen
+    captureContainer.style.top = '-9999px';
+    captureContainer.style.padding = '20px';
+    captureContainer.style.background = 'white';
+    captureContainer.style.fontFamily = "'PT Sans', sans-serif";
+    
+    // For timeline view, we need to make sure the container is wide enough
+    if (viewMode === 'table') {
+        captureContainer.style.width = 'max-content';
+    }
+    
     const title = document.createElement('h1');
     title.innerText = 'Class Routine';
     title.style.textAlign = 'center';
     title.style.marginBottom = '20px';
     title.style.fontSize = '24px';
-    container.appendChild(title);
+    captureContainer.appendChild(title);
+
+    const clonedElement = originalElement.cloneNode(true) as HTMLElement;
+    captureContainer.appendChild(clonedElement);
+    document.body.appendChild(captureContainer);
     
-    // Move the target element inside the container
-    const parent = elementToCapture.parentNode;
-    parent?.insertBefore(container, elementToCapture);
-    container.appendChild(elementToCapture);
-
-    // --- Start of fix for cropped image ---
-    const originalOverflow = elementToCapture.style.overflowX;
-    const originalWidth = elementToCapture.style.width;
-    if (viewMode === 'table') {
-      elementToCapture.style.overflowX = 'visible';
-      elementToCapture.style.width = 'max-content';
-    }
-    // --- End of fix for cropped image ---
-
     try {
-        const dataUrl = await toPng(container, { 
+        const dataUrl = await toPng(captureContainer, { 
             quality: 1.0, 
             pixelRatio: 2,
             backgroundColor: 'white'
@@ -243,16 +240,7 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
             description: "Could not export to image. Please try again."
         });
     } finally {
-        // --- Restore original styles ---
-        if (viewMode === 'table') {
-            elementToCapture.style.overflowX = originalOverflow;
-            elementToCapture.style.width = originalWidth;
-        }
-        // --- End of restoring ---
-
-        // Move the element back to its original parent and remove the container
-        parent?.insertBefore(elementToCapture, container);
-        parent?.removeChild(container);
+        document.body.removeChild(captureContainer);
         setIsExporting(null);
     }
 };

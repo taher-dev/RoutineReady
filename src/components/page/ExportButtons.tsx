@@ -155,8 +155,9 @@ export function ExportButtons({ routineData, viewMode }: ExportButtonsProps) {
           head,
           body,
           theme: 'grid',
-          styles: { fontSize: 8, valign: 'middle', halign: 'center' },
+          styles: { fontSize: 9, valign: 'middle', halign: 'center' },
           headStyles: { fillColor: [148, 211, 172], textColor: [32, 56, 42], fontStyle: 'bold' },
+          margin: { top: 10, right: 10, bottom: 10, left: 10 },
       });
       doc.save('routine-timeline.pdf');
   };

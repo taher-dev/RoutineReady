@@ -26,7 +26,7 @@ const EnhanceOcrAccuracyOutputSchema = z.object({
 export type EnhanceOcrAccuracyOutput = z.infer<typeof EnhanceOcrAccuracyOutputSchema>;
 
 export async function enhanceOcrAccuracy(input: EnhanceOcrAccuracyInput): Promise<EnhanceOcrAccuracyOutput> {
-  return enhanceOcrAccuracyFlow(input);
+  return await enhanceOcrAccuracyFlow(input);
 }
 
 const enhanceOcrAccuracyPrompt = ai.definePrompt({

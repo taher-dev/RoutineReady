@@ -38,8 +38,8 @@ export function ExportButtons({ routineData, tableRef }: ExportButtonsProps) {
           html: tableElement.querySelector('table'),
           theme: 'grid',
           styles: {
-            fontSize: 7,
-            cellPadding: 2,
+            fontSize: 9,
+            cellPadding: 4,
             valign: 'middle',
           },
           headStyles: {

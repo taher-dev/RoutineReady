@@ -4,6 +4,7 @@ import { useState, useRef, useMemo } from 'react';
 import { Header } from '@/components/page/Header';
 import { RoutineInput } from '@/components/page/RoutineInput';
 import { RoutineTable, type RoutineTableRef } from '@/components/page/RoutineTable';
+import { RoutineList } from '@/components/page/RoutineList';
 import { ExportButtons } from '@/components/page/ExportButtons';
 import { RoutineData } from '@/lib/types';
 import { enhanceOcrAccuracy } from '@/lib/actions';
@@ -12,11 +13,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { Welcome } from '@/components/page/Welcome';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { List, Table } from 'lucide-react';
 
 export default function Home() {
   const [routineData, setRoutineData] = useState<RoutineData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'table' | 'list'>('table');
   const tableRef = useRef<RoutineTableRef>(null);
   const { toast } = useToast();
 
@@ -136,16 +140,30 @@ export default function Home() {
                <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                   <CardTitle>Your Formatted Routine</CardTitle>
-                  <CardDescription>Click on any cell to edit. You can export your routine below.</CardDescription>
+                  <CardDescription>
+                    {viewMode === 'table' 
+                      ? 'Click on any cell to edit. You can export your routine below.'
+                      : 'This is a preview of the PDF format. Switch to table view to edit.'
+                    }
+                  </CardDescription>
                 </div>
-                <ExportButtons routineData={routineData} tableRef={tableRef} />
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="icon" onClick={() => setViewMode(viewMode === 'table' ? 'list' : 'table')}>
+                    {viewMode === 'table' ? <List /> : <Table />}
+                  </Button>
+                  <ExportButtons routineData={routineData} tableRef={tableRef} />
+                </div>
               </CardHeader>
               <CardContent>
-                <RoutineTable 
-                  ref={tableRef}
-                  initialData={routineData} 
-                  onUpdate={setRoutineData}
-                />
+                {viewMode === 'table' ? (
+                  <RoutineTable 
+                    ref={tableRef}
+                    initialData={routineData} 
+                    onUpdate={setRoutineData}
+                  />
+                ) : (
+                  <RoutineList routineData={routineData} />
+                )}
               </CardContent>
             </Card>
           )}

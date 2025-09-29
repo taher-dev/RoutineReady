@@ -76,4 +76,13 @@
   body {
     @apply bg-background text-foreground;
   }
+  tr {
+    --table-row-bg: hsl(var(--background));
+  }
+  tr:hover {
+     --table-row-bg: hsl(var(--primary) / 0.1);
+  }
+  tr.odd\:bg-card {
+    --table-row-bg: hsl(var(--card));
+  }
 }

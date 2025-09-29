@@ -136,7 +136,7 @@ export const RoutineTable = forwardRef<RoutineTableRef, RoutineTableProps>(({ in
                   <TableCell 
                     className="font-bold sticky left-0 bg-inherit"
                     style={{
-                      backgroundImage: 'linear-gradient(to right, hsl(var(--card)) 80%, transparent)',
+                      backgroundImage: 'linear-gradient(to right, var(--table-row-bg, transparent) 70%, transparent)',
                     }}
                   >{day}</TableCell>
                   {timeSlots.map((slot, slotIndex) => {

@@ -15,7 +15,15 @@ export interface RoutineTableRef {
   getElement: () => HTMLDivElement | null;
 }
 
-const timeSlots = Array.from({ length: 17 }, (_, i) => (8 * 60 + 30) + i * 30); // 8:30 AM to 4:30 PM in 30min intervals
+const timeSlots = [
+    { start: 8 * 60 + 30, end: 10 * 60 }, // 8:30 - 10:00
+    { start: 10 * 60, end: 11 * 60 + 30 }, // 10:00 - 11:30
+    { start: 11 * 60 + 30, end: 13 * 60 },   // 11:30 - 1:00
+    { start: 13 * 60, end: 13 * 60 + 30, isBreak: true }, // 1:00 - 1:30 (Break)
+    { start: 13 * 60 + 30, end: 15 * 60 }, // 1:30 - 3:00
+    { start: 15 * 60, end: 16 * 60 + 30 }, // 3:00 - 4:30
+];
+
 const breakTimeStart = 13 * 60; // 1:00 PM
 const breakTimeEnd = 13 * 60 + 30; // 1:30 PM
 
@@ -106,11 +114,11 @@ export const RoutineTable = forwardRef<RoutineTableRef, RoutineTableProps>(({ in
           <TableRow>
             <TableHead className="w-32 font-semibold text-primary-foreground">Day</TableHead>
             {timeSlots.map(slot => (
-              <TableHead key={slot} className={cn(
-                "w-24 text-center font-semibold text-primary-foreground/80",
-                slot >= breakTimeStart && slot < breakTimeEnd && "bg-accent/20"
+              <TableHead key={slot.start} className={cn(
+                "w-48 text-center font-semibold text-primary-foreground/80",
+                slot.isBreak && "bg-accent/20 w-24"
               )}>
-                {formatTime(slot)}
+                {slot.isBreak ? 'Break' : `${formatTime(slot.start)} - ${formatTime(slot.end)}`}
               </TableHead>
             ))}
           </TableRow>
@@ -121,22 +129,41 @@ export const RoutineTable = forwardRef<RoutineTableRef, RoutineTableProps>(({ in
             if (!dayCourses || dayCourses.length === 0) return null;
 
             let occupiedSlots = 0;
+            let occupiedMinutes = 0;
 
             return (
               <TableRow key={day} className="odd:bg-card hover:bg-primary/10">
                 <TableCell className="font-bold sticky left-0 bg-inherit">{day}</TableCell>
-                {timeSlots.map((slot, slotIndex) => {
-                  if (occupiedSlots > 0) {
-                    occupiedSlots--;
-                    return null;
-                  }
+                {timeSlots.map((slot) => {
+                   if (occupiedMinutes > 0) {
+                        const slotDuration = slot.end - slot.start;
+                        occupiedMinutes = Math.max(0, occupiedMinutes - slotDuration);
+                        if(occupiedMinutes > 0) return null;
+                    }
                   
-                  const course = dayCourses.find(c => c.startTimeMinutes === slot);
+                  const course = dayCourses.find(c => c.startTimeMinutes >= slot.start && c.startTimeMinutes < slot.end);
+
                   if (course) {
-                    const durationSlots = Math.round((course.endTimeMinutes - course.startTimeMinutes) / 30);
-                    occupiedSlots = durationSlots - 1;
+                    const courseDuration = course.endTimeMinutes - course.startTimeMinutes;
+                    
+                    let colSpan = 0;
+                    let accumulatedDuration = 0;
+                    
+                    for(const s of timeSlots) {
+                        if (s.start >= course.startTimeMinutes) {
+                            if(accumulatedDuration < courseDuration){
+                                accumulatedDuration += (s.end - s.start);
+                                colSpan++;
+                            } else {
+                                break;
+                            }
+                        }
+                    }
+
+                    occupiedMinutes = courseDuration - (slot.end - slot.start);
+
                     return (
-                      <TableCell key={slot} colSpan={durationSlots} className="p-0 align-top" data-course-cell>
+                      <TableCell key={slot.start} colSpan={colSpan} className="p-0 align-top" data-course-cell>
                         <div className="h-full w-full bg-primary/10 rounded-md p-2 border border-primary/20 shadow-sm flex flex-col justify-center">
                           {[ 'course', 'title', 'room' ].map(key => {
                              const field = key as keyof Course;
@@ -178,7 +205,7 @@ export const RoutineTable = forwardRef<RoutineTableRef, RoutineTableProps>(({ in
                     )
                   }
                   return (
-                    <TableCell key={slot} className={cn(slot >= breakTimeStart && slot < breakTimeEnd && "bg-accent/10")}></TableCell>
+                    <TableCell key={slot.start} className={cn(slot.isBreak && "bg-accent/10")}></TableCell>
                   );
                 })}
               </TableRow>

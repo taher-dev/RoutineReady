@@ -1,3 +1,4 @@
+
 'use client';
 
 import { RoutineData, ALL_DAYS, Day } from "@/lib/types";
@@ -53,18 +54,22 @@ export function ExportButtons({ routineData, viewMode }: ExportButtonsProps) {
       const head = [['Day', 'Time', 'Course', 'Room']];
       
       const daysWithCourses = ALL_DAYS.filter(day => routineData[day] && routineData[day]!.length > 0);
+      const lightGrayColor = [245, 245, 245];
 
-      const body = daysWithCourses.flatMap(day => {
+      const body = daysWithCourses.flatMap((day, dayIndex) => {
         const dayCourses = routineData[day] || [];
-        // Important: Sort courses by start time to process them in order
         const sortedCourses = [...dayCourses].sort((a,b) => a.startTimeMinutes - b.startTimeMinutes);
 
-        return sortedCourses.map(course => [
-            getShortDay(day),
-            course.time,
-            `${course.course}\n${course.title}`,
-            course.room
-        ]);
+        const rowStyle = dayIndex % 2 === 1 ? { fillColor: lightGrayColor, textColor: [25, 25, 28] } : {};
+
+        return sortedCourses.map(course => {
+            return [
+                { content: getShortDay(day), styles: { ...rowStyle, fontStyle: 'bold' } },
+                { content: course.time, styles: rowStyle },
+                { content: `${course.course}\n${course.title}`, styles: rowStyle },
+                { content: course.room, styles: rowStyle }
+            ];
+        });
       });
 
       (doc as any).autoTable({
@@ -83,7 +88,7 @@ export function ExportButtons({ routineData, viewMode }: ExportButtonsProps) {
             fontSize: 14,
         },
         columnStyles: {
-            0: { fontStyle: 'bold', fillColor: [245, 245, 245], textColor: [25, 25, 28] }, // Day column
+            // Day column style is now handled in the body generation
         },
         margin: { top: 15, right: 10, left: 10, bottom: 15 },
       });

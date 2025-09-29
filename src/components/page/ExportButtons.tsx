@@ -36,17 +36,15 @@ const getShortDay = (day: Day): string => {
 
 interface ExportButtonsProps {
   routineData: RoutineData;
-  tableRef?: React.RefObject<any>; // tableRef is not used in the manual build approach
+  viewMode: 'table' | 'list';
 }
 
 
-export function ExportButtons({ routineData }: ExportButtonsProps) {
+export function ExportButtons({ routineData, viewMode }: ExportButtonsProps) {
   const [isExporting, setIsExporting] = useState<null | 'pdf' | 'excel'>(null);
   const { toast } = useToast();
 
-  const exportToPDF = () => {
-    setIsExporting('pdf');
-    try {
+  const exportListViewToPDF = () => {
       const doc = new jsPDF({
         orientation: 'portrait',
         format: 'a4',
@@ -74,27 +72,83 @@ export function ExportButtons({ routineData }: ExportButtonsProps) {
         body,
         theme: 'grid',
         styles: {
-            fontSize: 12, // Increase base font size
+            fontSize: 12,
+            valign: 'middle',
+            halign: 'center',
         },
         headStyles: {
             fillColor: [148, 211, 172],
             textColor: [32, 56, 42],
             fontStyle: 'bold',
-            halign: 'center',
-            fontSize: 14, // Increase header font size
+            fontSize: 14,
         },
         columnStyles: {
             0: { fontStyle: 'bold', fillColor: [245, 245, 245], textColor: [25, 25, 28] }, // Day column
         },
-        didParseCell: (data: any) => {
-             data.cell.styles.valign = 'middle';
-             data.cell.styles.halign = 'center';
-        },
-        margin: { top: 28.35, right: 10, left: 10, bottom: 28.35 },
+        margin: { top: 15, right: 10, left: 10, bottom: 15 },
       });
 
-      doc.save('routine.pdf');
+      doc.save('routine-list.pdf');
+  };
+  
+  const exportTimelineViewToPDF = () => {
+      const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
+      const head = [['Day', ...timeSlots.map(slot => slot.isBreak ? 'Break' : `${formatTime(slot.start)} - ${formatTime(slot.end)}`)]];
+      const body = ALL_DAYS.filter(day => routineData[day] && routineData[day]!.length > 0)
+          .map(day => {
+              const row: any[] = [{ content: day, styles: { fontStyle: 'bold' } }];
+              const dayCourses = routineData[day] || [];
 
+              timeSlots.forEach(slot => {
+                  if (row.find(cell => cell.colSpan > 1 && cell.colSpan-- > 1)) return;
+
+                  const course = dayCourses.find(c => c.startTimeMinutes >= slot.start && c.startTimeMinutes < slot.end);
+
+                  if (course) {
+                      const courseDuration = course.endTimeMinutes - course.startTimeMinutes;
+                      let colSpan = 0;
+                      let accumulatedDuration = 0;
+                      for (const s of timeSlots) {
+                          if (s.start >= course.startTimeMinutes) {
+                              if (accumulatedDuration < courseDuration) {
+                                  accumulatedDuration += (s.end - s.start);
+                                  colSpan++;
+                              } else {
+                                  break;
+                              }
+                          }
+                      }
+                      row.push({
+                          content: `${course.course}\n${course.title}\nRoom: ${course.room}`,
+                          colSpan: colSpan,
+                          styles: { valign: 'middle', halign: 'center' }
+                      });
+                  } else {
+                      row.push('');
+                  }
+              });
+              return row;
+          });
+
+      (doc as any).autoTable({
+          head,
+          body,
+          theme: 'grid',
+          styles: { fontSize: 8, valign: 'middle', halign: 'center' },
+          headStyles: { fillColor: [148, 211, 172], textColor: [32, 56, 42], fontStyle: 'bold' },
+      });
+      doc.save('routine-timeline.pdf');
+  };
+
+
+  const exportToPDF = () => {
+    setIsExporting('pdf');
+    try {
+      if (viewMode === 'list') {
+        exportListViewToPDF();
+      } else {
+        exportTimelineViewToPDF();
+      }
     } catch (error) {
       console.error("PDF Export Error:", error);
       toast({
@@ -105,24 +159,83 @@ export function ExportButtons({ routineData }: ExportButtonsProps) {
     }
     setIsExporting(null);
   };
-
-  const exportToExcel = () => {
-    setIsExporting('excel');
-    try {
-      const wb = XLSX.utils.book_new();
-      
+  
+  const exportListViewToExcel = () => {
       const ws_data: any[][] = [['Day', 'Time', 'Course Code', 'Course Title', 'Room']];
-      
       ALL_DAYS.forEach(day => {
         const courses = routineData[day] || [];
         courses.sort((a,b) => a.startTimeMinutes - b.startTimeMinutes).forEach(course => {
           ws_data.push([day, course.time, course.course, course.title, course.room]);
         });
       });
-
       const ws = XLSX.utils.aoa_to_sheet(ws_data);
+      return ws;
+  };
+
+  const exportTimelineViewToExcel = () => {
+      const header = ['Day', ...timeSlots.map(slot => slot.isBreak ? 'Break' : `${formatTime(slot.start)} - ${formatTime(slot.end)}`)];
+      const ws_data: any[][] = [header];
+      const merges: XLSX.Range[] = [];
+
+      ALL_DAYS.filter(day => routineData[day] && routineData[day]!.length > 0)
+        .forEach((day, rowIndex) => {
+            const row: any[] = [day];
+            const dayCourses = routineData[day] || [];
+            let colIndex = 1;
+
+            timeSlots.forEach(slot => {
+                if (colIndex <= row.length -1) { // Skip if a previous cell has a colspan
+                    colIndex++;
+                    return;
+                }
+
+                const course = dayCourses.find(c => c.startTimeMinutes >= slot.start && c.startTimeMinutes < slot.end);
+                
+                if (course) {
+                    const courseDuration = course.endTimeMinutes - course.startTimeMinutes;
+                    let colSpan = 0;
+                    let accumulatedDuration = 0;
+                    timeSlots.forEach(s => {
+                        if (s.start >= course.startTimeMinutes && accumulatedDuration < courseDuration) {
+                            accumulatedDuration += (s.end - s.start);
+                            colSpan++;
+                        }
+                    });
+                    
+                    row.push(`${course.course}\n${course.title}\nRoom: ${course.room}`);
+                    if (colSpan > 1) {
+                        merges.push({ s: { r: rowIndex + 1, c: colIndex }, e: { r: rowIndex + 1, c: colIndex + colSpan - 1 } });
+                        for (let i = 1; i < colSpan; i++) row.push('');
+                    }
+                    colIndex += colSpan;
+                } else {
+                    row.push('');
+                    colIndex++;
+                }
+            });
+            ws_data.push(row);
+        });
+      
+      const ws = XLSX.utils.aoa_to_sheet(ws_data);
+      ws['!merges'] = merges;
+      return ws;
+  };
+
+  const exportToExcel = () => {
+    setIsExporting('excel');
+    try {
+      const wb = XLSX.utils.book_new();
+      let ws;
+      let filename;
+      if (viewMode === 'list') {
+        ws = exportListViewToExcel();
+        filename = 'routine-list.xlsx';
+      } else {
+        ws = exportTimelineViewToExcel();
+        filename = 'routine-timeline.xlsx';
+      }
       XLSX.utils.book_append_sheet(wb, ws, 'Routine');
-      XLSX.writeFile(wb, 'routine.xlsx');
+      XLSX.writeFile(wb, filename);
 
     } catch(error) {
       console.error("Excel Export Error:", error);

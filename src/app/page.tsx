@@ -151,7 +151,7 @@ export default function Home() {
                   <Button variant="outline" size="icon" onClick={() => setViewMode(viewMode === 'table' ? 'list' : 'table')}>
                     {viewMode === 'table' ? <List /> : <Table />}
                   </Button>
-                  <ExportButtons routineData={routineData} tableRef={tableRef} />
+                  <ExportButtons routineData={routineData} viewMode={viewMode} />
                 </div>
               </CardHeader>
               <CardContent>

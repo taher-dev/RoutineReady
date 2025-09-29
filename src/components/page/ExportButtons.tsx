@@ -3,12 +3,11 @@
 
 import { RoutineData, ALL_DAYS, Day } from "@/lib/types";
 import { Button } from "../ui/button";
-import { FileDown, FileText, ImageIcon, Loader2 } from "lucide-react";
+import { FileDown, ImageIcon, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import * as XLSX from 'xlsx';
 import { toPng } from 'html-to-image';
 import type { UserOptions } from 'jspdf-autotable';
 
@@ -44,7 +43,7 @@ interface ExportButtonsProps {
 
 
 export function ExportButtons({ routineData, viewMode, getTargetElement }: ExportButtonsProps) {
-  const [isExporting, setIsExporting] = useState<null | 'pdf' | 'excel' | 'image'>(null);
+  const [isExporting, setIsExporting] = useState<null | 'pdf' | 'image'>(null);
   const { toast } = useToast();
 
   const exportListViewToPDF = () => {
@@ -183,119 +182,172 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
     }
     setIsExporting(null);
   };
-  
-  const exportListViewToExcel = () => {
-      const ws_data: any[][] = [['Day', 'Time', 'Course Code', 'Course Title', 'Room']];
-      ALL_DAYS.forEach(day => {
-        const courses = routineData[day] || [];
-        courses.sort((a,b) => a.startTimeMinutes - b.startTimeMinutes).forEach(course => {
-          ws_data.push([day, course.time, course.course, course.title, course.room]);
+
+  const createPdfImageElement = (view: 'list' | 'table'): HTMLElement => {
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'absolute';
+    wrapper.style.left = '-9999px';
+    wrapper.style.top = '0';
+    wrapper.style.background = 'white';
+    wrapper.style.padding = '20px';
+    wrapper.style.fontFamily = "'PT Sans', sans-serif";
+    wrapper.style.width = view === 'list' ? '800px' : '1200px';
+
+    const title = document.createElement('h1');
+    title.innerText = 'Class Routine';
+    title.style.textAlign = 'center';
+    title.style.marginBottom = '20px';
+    title.style.fontSize = '24px';
+    wrapper.appendChild(title);
+
+    const table = document.createElement('table');
+    table.style.width = '100%';
+    table.style.borderCollapse = 'collapse';
+    const thead = document.createElement('thead');
+    const tbody = document.createElement('tbody');
+
+    const headerRow = document.createElement('tr');
+    
+    // Common styles
+    const thStyle = {
+      border: '1px solid #ddd',
+      padding: '12px',
+      backgroundColor: 'rgb(148, 211, 172)',
+      color: 'rgb(32, 56, 42)',
+      fontWeight: 'bold',
+      fontSize: '14px',
+      textAlign: 'center' as const,
+    };
+    const tdStyle = {
+      border: '1px solid #ddd',
+      padding: '10px',
+      textAlign: 'center' as const,
+      fontSize: '12px',
+      verticalAlign: 'middle' as const,
+    };
+
+
+    if (view === 'list') {
+        ['Day', 'Time', 'Course', 'Room'].forEach(headerText => {
+            const th = document.createElement('th');
+            Object.assign(th.style, thStyle);
+            th.innerText = headerText;
+            headerRow.appendChild(th);
         });
-      });
-      const ws = XLSX.utils.aoa_to_sheet(ws_data);
-      return ws;
-  };
+        thead.appendChild(headerRow);
 
-  const exportTimelineViewToExcel = () => {
-      const header = ['Day', ...timeSlots.map(slot => slot.isBreak ? 'Break' : `${formatTime(slot.start)} - ${formatTime(slot.end)}`)];
-      const ws_data: any[][] = [header];
-      const merges: XLSX.Range[] = [];
-
-      ALL_DAYS.filter(day => routineData[day] && routineData[day]!.length > 0)
-        .forEach((day, rowIndex) => {
-            const row: any[] = [day];
+        const daysWithCourses = ALL_DAYS.filter(day => routineData[day] && routineData[day]!.length > 0);
+        daysWithCourses.forEach((day, dayIndex) => {
             const dayCourses = routineData[day] || [];
-            let colIndex = 1;
-            let occupiedUntil = 0;
-
-
-            timeSlots.forEach((slot, slotIndex) => {
-                if (occupiedUntil > slot.start) {
-                  row.push(''); // placeholder for merged cell
-                  colIndex++;
-                  return; 
+            dayCourses.forEach(course => {
+                const tr = document.createElement('tr');
+                 if (dayIndex % 2 === 1) {
+                    tr.style.backgroundColor = '#f5f5f5';
                 }
+                const dayCell = document.createElement('td');
+                Object.assign(dayCell.style, tdStyle);
+                dayCell.style.fontWeight = 'bold';
+                dayCell.innerText = getShortDay(day);
 
-                const course = dayCourses.find(c => c.startTimeMinutes >= slot.start && c.startTimeMinutes < slot.end);
-                
+                const timeCell = document.createElement('td');
+                Object.assign(timeCell.style, tdStyle);
+                timeCell.innerText = course.time;
+
+                const courseCell = document.createElement('td');
+                Object.assign(courseCell.style, tdStyle);
+                courseCell.style.textAlign = 'left';
+                courseCell.innerHTML = `${course.course}<br/><small>${course.title}</small>`;
+
+                const roomCell = document.createElement('td');
+                Object.assign(roomCell.style, tdStyle);
+                roomCell.innerText = course.room;
+
+                tr.appendChild(dayCell);
+                tr.appendChild(timeCell);
+                tr.appendChild(courseCell);
+                tr.appendChild(roomCell);
+                tbody.appendChild(tr);
+            });
+        });
+
+    } else { // timeline view
+        ['Day', ...timeSlots.map(slot => slot.isBreak ? 'Break' : `${formatTime(slot.start)} - ${formatTime(slot.end)}`)].forEach(headerText => {
+            const th = document.createElement('th');
+            Object.assign(th.style, thStyle);
+            th.style.fontSize = '11px';
+            th.innerText = headerText;
+            headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+
+        ALL_DAYS.filter(day => routineData[day] && routineData[day]!.length > 0)
+        .forEach(day => {
+            const tr = document.createElement('tr');
+            const dayCell = document.createElement('td');
+            Object.assign(dayCell.style, tdStyle);
+            dayCell.style.fontWeight = 'bold';
+            dayCell.innerText = day;
+            tr.appendChild(dayCell);
+            
+            let occupiedUntil = 0;
+            timeSlots.forEach((slot, slotIndex) => {
+                if (occupiedUntil > slot.start) return;
+
+                const course = (routineData[day] || []).find(c => c.startTimeMinutes >= slot.start && c.startTimeMinutes < slot.end);
+
+                const cell = document.createElement('td');
+                Object.assign(cell.style, tdStyle);
+                cell.style.height = '50px';
+
                 if (course) {
                     const courseDuration = course.endTimeMinutes - course.startTimeMinutes;
                     let colSpan = 0;
                     let accumulatedDuration = 0;
-
                     for (let i = slotIndex; i < timeSlots.length; i++) {
-                      const currentSlot = timeSlots[i];
-                      if(accumulatedDuration < courseDuration){
-                          accumulatedDuration += (currentSlot.end - currentSlot.start);
-                          colSpan++;
+                      if (accumulatedDuration < courseDuration) {
+                        accumulatedDuration += (timeSlots[i].end - timeSlots[i].start);
+                        colSpan++;
                       } else {
-                          break;
+                        break;
                       }
                     }
-
                     occupiedUntil = course.endTimeMinutes;
-                    
-                    row.push(`${course.course}\n${course.title}\nRoom: ${course.room}`);
-                    if (colSpan > 1) {
-                        merges.push({ s: { r: rowIndex + 1, c: colIndex }, e: { r: rowIndex + 1, c: colIndex + colSpan - 1 } });
-                    }
-                    colIndex += colSpan;
-
+                    cell.colSpan = colSpan > 0 ? colSpan : 1;
+                    cell.innerHTML = `${course.course}<br/>${course.title}<br/>Room: ${course.room}`;
+                    cell.style.backgroundColor = 'rgb(237, 244, 239)';
                 } else {
-                    row.push('');
                     occupiedUntil = slot.end;
-                    colIndex++;
+                     if(slot.isBreak){
+                        cell.innerText = 'Break';
+                        cell.style.backgroundColor = '#f5f5f5';
+                    }
                 }
+                tr.appendChild(cell);
             });
-            ws_data.push(row);
+            tbody.appendChild(tr);
         });
-      
-      const ws = XLSX.utils.aoa_to_sheet(ws_data);
-      ws['!merges'] = merges;
-      return ws;
-  };
-
-  const exportToExcel = () => {
-    setIsExporting('excel');
-    try {
-      const wb = XLSX.utils.book_new();
-      let ws;
-      let filename;
-      if (viewMode === 'list') {
-        ws = exportListViewToExcel();
-        filename = 'routine-list.xlsx';
-      } else {
-        ws = exportTimelineViewToExcel();
-        filename = 'routine-timeline.xlsx';
-      }
-      XLSX.utils.book_append_sheet(wb, ws, 'Routine');
-      XLSX.writeFile(wb, filename);
-
-    } catch(error) {
-      console.error("Excel Export Error:", error);
-      toast({
-        variant: 'destructive',
-        title: "Export Failed",
-        description: "Could not export to Excel. Please try again."
-      });
     }
-    setIsExporting(null);
-  };
+
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    wrapper.appendChild(table);
+    document.body.appendChild(wrapper);
+    return wrapper;
+  }
   
   const exportToImage = async () => {
-    const element = getTargetElement();
-    if (!element) {
-        toast({
-            variant: 'destructive',
-            title: "Export Failed",
-            description: "Could not find the routine element to capture."
-        });
-        return;
-    }
-
     setIsExporting('image');
+    
+    let elementToCapture: HTMLElement | null = null;
     try {
-        const dataUrl = await toPng(element);
+        // Create a temporary, styled element that mimics the PDF
+        elementToCapture = createPdfImageElement(viewMode);
+        
+        const dataUrl = await toPng(elementToCapture, { 
+            quality: 1.0, 
+            pixelRatio: 2,
+            backgroundColor: 'white'
+        });
         const link = document.createElement('a');
         link.download = `routine-${viewMode}.png`;
         link.href = dataUrl;
@@ -307,8 +359,12 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
             title: "Export Failed",
             description: "Could not export to image. Please try again."
         });
+    } finally {
+        if(elementToCapture) {
+            document.body.removeChild(elementToCapture);
+        }
+        setIsExporting(null);
     }
-    setIsExporting(null);
 };
 
 
@@ -318,10 +374,6 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
         {isExporting === 'pdf' ? <Loader2 className="animate-spin" /> : <FileDown />}
         Export PDF
       </Button>
-      <Button onClick={exportToExcel} variant="outline" size="sm" disabled={!!isExporting}>
-        {isExporting === 'excel' ? <Loader2 className="animate-spin" /> : <FileText />}
-        Export Excel
-      </Button>
        <Button onClick={exportToImage} variant="outline" size="sm" disabled={!!isExporting}>
         {isExporting === 'image' ? <Loader2 className="animate-spin" /> : <ImageIcon />}
         Export Image
@@ -329,3 +381,5 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
     </div>
   );
 }
+
+    

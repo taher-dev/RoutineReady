@@ -19,6 +19,7 @@ interface ExportButtonsProps {
 // Extend the UserOptions type to include didParseCell hook
 interface CustomUserOptions extends UserOptions {
     didParseCell?: (data: any) => void;
+    didDrawPage?: (data: any) => void;
 }
 
 export function ExportButtons({ routineData, tableRef }: ExportButtonsProps) {
@@ -38,7 +39,7 @@ export function ExportButtons({ routineData, tableRef }: ExportButtonsProps) {
           html: tableElement.querySelector('table'),
           theme: 'grid',
           styles: {
-            fontSize: 9,
+            fontSize: 14,
             cellPadding: 4,
             valign: 'middle',
           },
@@ -46,6 +47,12 @@ export function ExportButtons({ routineData, tableRef }: ExportButtonsProps) {
             fillColor: [148, 211, 172], // primary: hsl(141, 43%, 71%)
             textColor: [32, 56, 42], // primary-foreground: hsl(141, 25%, 15%)
             fontStyle: 'bold',
+          },
+           didDrawPage: (data) => {
+            // Center the table horizontally
+            const tableWidth = data.table.width;
+            const pageWidth = doc.internal.pageSize.width;
+            data.cursor.x = (pageWidth - tableWidth) / 2;
           },
           didParseCell: (data) => {
              // Color the day cells
@@ -62,12 +69,15 @@ export function ExportButtons({ routineData, tableRef }: ExportButtonsProps) {
                  const courseCell = data.cell.raw as HTMLElement;
                  const course = courseCell.querySelector('[data-course-field="course"]')?.textContent;
                  const title = courseCell.querySelector('[data-course-field="title"]')?.textContent;
-                 const room = courseCell.querySelector('[data-course-field="room"]')?.textContent;
+                 const roomContent = courseCell.querySelector('[data-course-field="room"]')?.textContent;
                  
+                 // The room content already contains "Room: ...", so we don't need to add it again.
+                 const roomText = roomContent || '';
+
                  data.cell.text = [
                      course || '',
                      title || '',
-                     room ? `Room: ${room}`: ''
+                     roomText,
                  ].filter(Boolean);
             }
           },

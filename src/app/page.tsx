@@ -182,7 +182,7 @@ export default function Home() {
         </div>
       </main>
       <footer className="text-center py-6 text-muted-foreground text-sm">
-        <p>Built with ❤️ by Firebase Studio. RoutineReady &copy; {new Date().getFullYear()}</p>
+        <p>Built with ❤️ RoutineReady &copy; {new Date().getFullYear()}</p>
       </footer>
     </div>
   );

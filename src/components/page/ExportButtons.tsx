@@ -31,6 +31,7 @@ export function ExportButtons({ routineData, tableRef }: ExportButtonsProps) {
     try {
       const doc = new jsPDF({
         orientation: 'landscape',
+        format: 'a3'
       });
 
       const tableElement = tableRef.current?.getElement();

@@ -132,13 +132,16 @@ export const RoutineTable = forwardRef<RoutineTableRef, RoutineTableProps>(({ in
               const renderedSlots = new Array(timeSlots.length).fill(false);
 
               return (
-                <TableRow key={day} className="odd:bg-card hover:bg-primary/10">
-                  <TableCell 
-                    className="font-bold sticky left-0 bg-inherit"
+                <TableRow key={day} className="bg-card hover:bg-primary/10">
+                  <TableCell
+                    className="font-bold sticky left-0 bg-[inherit]"
                     style={{
-                      backgroundImage: 'linear-gradient(to right, var(--table-row-bg, transparent) 70%, transparent)',
+                      backgroundImage:
+                        'linear-gradient(to right, hsl(var(--card)) 85%, transparent)',
                     }}
-                  >{day}</TableCell>
+                  >
+                    {day}
+                  </TableCell>
                   {timeSlots.map((slot, slotIndex) => {
                     if (renderedSlots[slotIndex]) return null;
 

@@ -186,7 +186,7 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
   const exportToImage = async () => {
     setIsExporting('image');
     
-    let elementToCapture = getTargetElement();
+    const elementToCapture = getTargetElement();
     if (!elementToCapture) {
       toast({
         variant: 'destructive',
@@ -197,30 +197,27 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
       return;
     }
 
-    // Create a temporary wrapper to style the image output
-    const wrapper = document.createElement('div');
-    wrapper.style.position = 'absolute';
-    wrapper.style.left = '-9999px';
-    wrapper.style.top = '0';
-    wrapper.style.background = 'white';
-    wrapper.style.padding = '20px';
-    wrapper.style.fontFamily = "'PT Sans', sans-serif";
-    wrapper.style.width = viewMode === 'list' ? '800px' : '1200px';
+    // Create a temporary container for the image output.
+    const container = document.createElement('div');
+    container.style.padding = '20px';
+    container.style.background = 'white';
+    container.style.fontFamily = "'PT Sans', sans-serif";
 
+    // Add a title to the container
     const title = document.createElement('h1');
     title.innerText = 'Class Routine';
     title.style.textAlign = 'center';
     title.style.marginBottom = '20px';
     title.style.fontSize = '24px';
-    wrapper.appendChild(title);
-
-    // Clone the node to avoid moving the original from the DOM
-    const clone = elementToCapture.cloneNode(true) as HTMLElement;
-    wrapper.appendChild(clone);
-    document.body.appendChild(wrapper);
+    container.appendChild(title);
+    
+    // Move the target element inside the container
+    const parent = elementToCapture.parentNode;
+    parent?.insertBefore(container, elementToCapture);
+    container.appendChild(elementToCapture);
 
     try {
-        const dataUrl = await toPng(wrapper, { 
+        const dataUrl = await toPng(container, { 
             quality: 1.0, 
             pixelRatio: 2,
             backgroundColor: 'white'
@@ -237,7 +234,9 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
             description: "Could not export to image. Please try again."
         });
     } finally {
-        document.body.removeChild(wrapper);
+        // Move the element back to its original parent and remove the container
+        parent?.insertBefore(elementToCapture, container);
+        parent?.removeChild(container);
         setIsExporting(null);
     }
 };

@@ -60,9 +60,10 @@ export function ExportButtons({ routineData, viewMode }: ExportButtonsProps) {
         const dayCourses = routineData[day] || [];
         const sortedCourses = [...dayCourses].sort((a,b) => a.startTimeMinutes - b.startTimeMinutes);
 
-        const rowStyle = dayIndex % 2 === 1 ? { fillColor: lightGrayColor, textColor: [25, 25, 28] } : {};
+        const isOddDay = dayIndex % 2 === 1;
 
         return sortedCourses.map(course => {
+            const rowStyle = isOddDay ? { fillColor: lightGrayColor } : {};
             return [
                 { content: getShortDay(day), styles: { ...rowStyle, fontStyle: 'bold' } },
                 { content: course.time, styles: rowStyle },
@@ -91,6 +92,12 @@ export function ExportButtons({ routineData, viewMode }: ExportButtonsProps) {
             // Day column style is now handled in the body generation
         },
         margin: { top: 15, right: 10, left: 10, bottom: 15 },
+        didParseCell: (data: any) => {
+            // This is for multi-line course titles
+            if (data.column.dataKey === 2 && data.cell.raw.content) {
+                data.cell.styles.cellPadding = 5;
+            }
+        }
       });
 
       doc.save('routine-list.pdf');
@@ -103,33 +110,42 @@ export function ExportButtons({ routineData, viewMode }: ExportButtonsProps) {
           .map(day => {
               const row: any[] = [{ content: day, styles: { fontStyle: 'bold' } }];
               const dayCourses = routineData[day] || [];
+              let occupiedUntil = 0;
 
-              timeSlots.forEach(slot => {
-                  if (row.find(cell => cell.colSpan > 1 && cell.colSpan-- > 1)) return;
+              timeSlots.forEach((slot, slotIndex) => {
+                  if (occupiedUntil > slot.start) {
+                      return; // This slot is occupied by a previous course with colspan
+                  }
 
                   const course = dayCourses.find(c => c.startTimeMinutes >= slot.start && c.startTimeMinutes < slot.end);
-
+                  
                   if (course) {
                       const courseDuration = course.endTimeMinutes - course.startTimeMinutes;
                       let colSpan = 0;
                       let accumulatedDuration = 0;
-                      for (const s of timeSlots) {
-                          if (s.start >= course.startTimeMinutes) {
-                              if (accumulatedDuration < courseDuration) {
-                                  accumulatedDuration += (s.end - s.start);
-                                  colSpan++;
-                              } else {
-                                  break;
-                              }
+                      
+                      // Calculate how many subsequent time slots this course spans
+                      for (let i = slotIndex; i < timeSlots.length; i++) {
+                          const currentSlot = timeSlots[i];
+                          if(accumulatedDuration < courseDuration){
+                              accumulatedDuration += (currentSlot.end - currentSlot.start);
+                              colSpan++;
+                          } else {
+                              break;
                           }
                       }
+                      
+                      occupiedUntil = course.endTimeMinutes;
+
                       row.push({
                           content: `${course.course}\n${course.title}\nRoom: ${course.room}`,
-                          colSpan: colSpan,
+                          colSpan: colSpan > 0 ? colSpan : 1,
                           styles: { valign: 'middle', halign: 'center' }
                       });
+
                   } else {
-                      row.push('');
+                      row.push(slot.isBreak ? { content: 'Break', styles: { valign: 'middle', halign: 'center' } } : '');
+                      occupiedUntil = slot.end;
                   }
               });
               return row;
@@ -187,11 +203,14 @@ export function ExportButtons({ routineData, viewMode }: ExportButtonsProps) {
             const row: any[] = [day];
             const dayCourses = routineData[day] || [];
             let colIndex = 1;
+            let occupiedUntil = 0;
 
-            timeSlots.forEach(slot => {
-                if (colIndex <= row.length -1) { // Skip if a previous cell has a colspan
-                    colIndex++;
-                    return;
+
+            timeSlots.forEach((slot, slotIndex) => {
+                if (occupiedUntil > slot.start) {
+                  row.push(''); // placeholder for merged cell
+                  colIndex++;
+                  return; 
                 }
 
                 const course = dayCourses.find(c => c.startTimeMinutes >= slot.start && c.startTimeMinutes < slot.end);
@@ -200,21 +219,28 @@ export function ExportButtons({ routineData, viewMode }: ExportButtonsProps) {
                     const courseDuration = course.endTimeMinutes - course.startTimeMinutes;
                     let colSpan = 0;
                     let accumulatedDuration = 0;
-                    timeSlots.forEach(s => {
-                        if (s.start >= course.startTimeMinutes && accumulatedDuration < courseDuration) {
-                            accumulatedDuration += (s.end - s.start);
-                            colSpan++;
-                        }
-                    });
+
+                    for (let i = slotIndex; i < timeSlots.length; i++) {
+                      const currentSlot = timeSlots[i];
+                      if(accumulatedDuration < courseDuration){
+                          accumulatedDuration += (currentSlot.end - currentSlot.start);
+                          colSpan++;
+                      } else {
+                          break;
+                      }
+                    }
+
+                    occupiedUntil = course.endTimeMinutes;
                     
                     row.push(`${course.course}\n${course.title}\nRoom: ${course.room}`);
                     if (colSpan > 1) {
                         merges.push({ s: { r: rowIndex + 1, c: colIndex }, e: { r: rowIndex + 1, c: colIndex + colSpan - 1 } });
-                        for (let i = 1; i < colSpan; i++) row.push('');
                     }
                     colIndex += colSpan;
+
                 } else {
                     row.push('');
+                    occupiedUntil = slot.end;
                     colIndex++;
                 }
             });

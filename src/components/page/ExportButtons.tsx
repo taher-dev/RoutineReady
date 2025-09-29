@@ -140,11 +140,11 @@ export function ExportButtons({ routineData, viewMode }: ExportButtonsProps) {
                       row.push({
                           content: `${course.course}\n${course.title}\nRoom: ${course.room}`,
                           colSpan: colSpan > 0 ? colSpan : 1,
-                          styles: { valign: 'middle', halign: 'center' }
+                          styles: { valign: 'middle', halign: 'center', fillColor: [237, 244, 239] }
                       });
 
                   } else {
-                      row.push(slot.isBreak ? { content: 'Break', styles: { valign: 'middle', halign: 'center' } } : '');
+                      row.push(slot.isBreak ? { content: 'Break', styles: { valign: 'middle', halign: 'center', fillColor: [245, 245, 245] } } : '');
                       occupiedUntil = slot.end;
                   }
               });
@@ -155,7 +155,7 @@ export function ExportButtons({ routineData, viewMode }: ExportButtonsProps) {
           head,
           body,
           theme: 'grid',
-          styles: { fontSize: 9, valign: 'middle', halign: 'center' },
+          styles: { fontSize: 9, valign: 'middle', halign: 'center', minCellHeight: 25 },
           headStyles: { fillColor: [148, 211, 172], textColor: [32, 56, 42], fontStyle: 'bold' },
           margin: { top: 10, right: 10, bottom: 10, left: 10 },
       });

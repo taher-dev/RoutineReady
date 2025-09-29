@@ -1,5 +1,3 @@
-# Firebase Studio
+# RoutineReady
 
-This is a NextJS starter in Firebase Studio.
-
-To get started, take a look at src/app/page.tsx.
+[**🔗routine-ready.vercel.app**](https://routine-ready.vercel.app/)

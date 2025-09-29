@@ -48,71 +48,26 @@ export function ExportButtons({ routineData }: ExportButtonsProps) {
     setIsExporting('pdf');
     try {
       const doc = new jsPDF({
-        orientation: 'landscape',
-        format: 'a3',
+        orientation: 'portrait',
+        format: 'a4',
       });
 
-      const head = [['Day', ...timeSlots.map(slot => slot.isBreak ? 'Break' : `${formatTime(slot.start)} - ${formatTime(slot.end)}`)]];
+      const head = [['Day', 'Time', 'Course', 'Room']];
       
-      const body = ALL_DAYS.map(day => {
+      const daysWithCourses = ALL_DAYS.filter(day => routineData[day] && routineData[day]!.length > 0);
+
+      const body = daysWithCourses.flatMap(day => {
         const dayCourses = routineData[day] || [];
         // Important: Sort courses by start time to process them in order
         const sortedCourses = [...dayCourses].sort((a,b) => a.startTimeMinutes - b.startTimeMinutes);
 
-        const row: (string | { content: string; colSpan: number; styles: { halign: 'center', valign: 'middle', fillColor: [number, number, number] } })[] = [getShortDay(day)];
-        
-        let lastCourseEndTime = 0;
-
-        timeSlots.forEach((slot) => {
-          // If the last processed course overlaps this slot, skip it.
-          if(lastCourseEndTime > slot.start) {
-            return;
-          }
-
-          const course = sortedCourses.find(c => c.startTimeMinutes >= slot.start && c.startTimeMinutes < slot.end);
-
-          if (course) {
-            const courseDuration = course.endTimeMinutes - course.startTimeMinutes;
-            let colSpan = 0;
-            let accumulatedDuration = 0;
-
-            for(const s of timeSlots) {
-                if (s.start >= course.startTimeMinutes) {
-                    if(accumulatedDuration < courseDuration){
-                        accumulatedDuration += (s.end - s.start);
-                        colSpan++;
-                    } else {
-                        break;
-                    }
-                }
-            }
-            
-            lastCourseEndTime = course.endTimeMinutes;
-            
-            row.push({
-              content: `${course.course}\n${course.title}\nRoom: ${course.room}`,
-              colSpan: colSpan,
-              styles: { halign: 'center', valign: 'middle', fillColor: [208, 240, 221] },
-            });
-          } else if (slot.isBreak) {
-            row.push(''); // Empty cell for break, styling applied via columnStyles
-          } else {
-            row.push(''); // Empty cell for no course
-          }
-        });
-        return row;
-      }).filter(row => row.length > 1); // Filter out days with no courses
-
-      const columnStyles: { [key: number]: any } = {
-        0: { fontStyle: 'bold', fillColor: [245, 245, 245], textColor: [25, 25, 28] }, // Day column
-      };
-
-      // Style for break column
-      const breakColumnIndex = timeSlots.findIndex(s => s.isBreak) + 1; // +1 because 'Day' is the first column
-      if (breakColumnIndex > 0) {
-        columnStyles[breakColumnIndex] = { fillColor: [235, 243, 255] };
-      }
-
+        return sortedCourses.map(course => [
+            getShortDay(day),
+            course.time,
+            `${course.course}\n${course.title}`,
+            course.room
+        ]);
+      });
 
       (doc as any).autoTable({
         head,
@@ -124,15 +79,14 @@ export function ExportButtons({ routineData }: ExportButtonsProps) {
             fontStyle: 'bold',
             halign: 'center'
         },
-        columnStyles: columnStyles,
-        didParseCell: (data: any) => {
-            // This hook is still useful for row-specific styling if needed
-            if (data.row.section === 'body' && data.cell.raw === '') {
-                 const isBreakColumn = data.column.index === breakColumnIndex;
-                 data.cell.styles.fillColor = isBreakColumn ? [235, 243, 255] : [255, 255, 255];
-            }
+        columnStyles: {
+            0: { fontStyle: 'bold', fillColor: [245, 245, 245], textColor: [25, 25, 28] }, // Day column
         },
-        margin: { left: 28.35, right: 28.35 }, // 1rem in points (1rem ~ 16px, 1pt = 1/72 inch, 96dpi => 16 * 72 / 96 * 2.835) approx. 28.35
+        didParseCell: (data: any) => {
+             data.cell.styles.valign = 'middle';
+             data.cell.styles.halign = 'center';
+        },
+        margin: { top: 28.35, right: 10, left: 10, bottom: 28.35 },
       });
 
       doc.save('routine.pdf');

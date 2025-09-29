@@ -73,11 +73,15 @@ export function ExportButtons({ routineData }: ExportButtonsProps) {
         head,
         body,
         theme: 'grid',
+        styles: {
+            fontSize: 12, // Increase base font size
+        },
         headStyles: {
             fillColor: [148, 211, 172],
             textColor: [32, 56, 42],
             fontStyle: 'bold',
-            halign: 'center'
+            halign: 'center',
+            fontSize: 14, // Increase header font size
         },
         columnStyles: {
             0: { fontStyle: 'bold', fillColor: [245, 245, 245], textColor: [25, 25, 28] }, // Day column

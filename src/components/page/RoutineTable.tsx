@@ -136,7 +136,7 @@ export const RoutineTable = forwardRef<RoutineTableRef, RoutineTableProps>(({ in
                     const durationSlots = Math.round((course.endTimeMinutes - course.startTimeMinutes) / 30);
                     occupiedSlots = durationSlots - 1;
                     return (
-                      <TableCell key={slot} colSpan={durationSlots} className="p-0 align-top">
+                      <TableCell key={slot} colSpan={durationSlots} className="p-0 align-top" data-course-cell>
                         <div className="h-full w-full bg-primary/10 rounded-md p-2 border border-primary/20 shadow-sm flex flex-col justify-center">
                           {[ 'course', 'title', 'room' ].map(key => {
                              const field = key as keyof Course;
@@ -161,6 +161,7 @@ export const RoutineTable = forwardRef<RoutineTableRef, RoutineTableProps>(({ in
                               <p
                                 key={field}
                                 onClick={() => handleCellClick(course, field)}
+                                data-course-field={field}
                                 className={cn(
                                   "cursor-pointer hover:bg-primary/20 rounded px-1 transition-colors",
                                   field === 'course' && 'font-bold text-primary-foreground',

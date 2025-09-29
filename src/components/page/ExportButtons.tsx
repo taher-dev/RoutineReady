@@ -9,10 +9,16 @@ import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import type { UserOptions } from 'jspdf-autotable';
 
 interface ExportButtonsProps {
   routineData: RoutineData;
   tableRef: React.RefObject<RoutineTableRef>;
+}
+
+// Extend the UserOptions type to include didParseCell hook
+interface CustomUserOptions extends UserOptions {
+    didParseCell?: (data: any) => void;
 }
 
 export function ExportButtons({ routineData, tableRef }: ExportButtonsProps) {
@@ -28,18 +34,46 @@ export function ExportButtons({ routineData, tableRef }: ExportButtonsProps) {
 
       const tableElement = tableRef.current?.getElement();
       if (tableElement) {
-        (doc as any).autoTable({
+        const autoTableOptions: CustomUserOptions = {
           html: tableElement.querySelector('table'),
           theme: 'grid',
           styles: {
             fontSize: 7,
             cellPadding: 2,
+            valign: 'middle',
           },
           headStyles: {
-            fillColor: '#94D3AC', // Primary color
-            textColor: '#193925', // Primary foreground
+            fillColor: 'hsl(141, 43%, 71%)', 
+            textColor: 'hsl(141, 25%, 15%)',
+            fontStyle: 'bold',
           },
-        });
+          didParseCell: (data) => {
+             // Color the day cells
+            if (data.column.index === 0 && data.row.section === 'body') {
+                data.cell.styles.fillColor = 'hsl(0, 0%, 96%)';
+                data.cell.styles.textColor = 'hsl(240, 10%, 3.9%)';
+                data.cell.styles.fontStyle = 'bold';
+            }
+            // Color the course cells
+            if (data.cell.raw && (data.cell.raw as HTMLElement).hasAttribute('data-course-cell')) {
+                 data.cell.styles.fillColor = 'hsla(141, 73%, 90%, 0.4)';
+                 data.cell.styles.fontStyle = 'normal';
+                 // Custom parsing for course content to make it look nice
+                 const courseCell = data.cell.raw as HTMLElement;
+                 const course = courseCell.querySelector('[data-course-field="course"]')?.textContent;
+                 const title = courseCell.querySelector('[data-course-field="title"]')?.textContent;
+                 const room = courseCell.querySelector('[data-course-field="room"]')?.textContent;
+                 
+                 data.cell.text = [
+                     course || '',
+                     title || '',
+                     room ? `Room: ${room}`: ''
+                 ].filter(Boolean);
+            }
+          },
+        };
+
+        (doc as any).autoTable(autoTableOptions);
         doc.save('routine.pdf');
       } else {
         throw new Error("Table element not found");

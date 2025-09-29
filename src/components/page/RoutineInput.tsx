@@ -3,11 +3,8 @@
 import { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, ClipboardPaste, Wand2, Loader2 } from 'lucide-react';
+import { Upload, Send, Loader2, Paperclip } from 'lucide-react';
 
 interface RoutineInputProps {
   onTextSubmit: (text: string) => void;
@@ -17,26 +14,31 @@ interface RoutineInputProps {
 
 export function RoutineInput({ onTextSubmit, onFileSubmit, isLoading }: RoutineInputProps) {
   const [text, setText] = useState('');
-  const [file, setFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setFile(e.target.files[0]);
+      onFileSubmit(e.target.files[0]);
     }
   };
 
   const handleTextFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onTextSubmit(text);
-  };
-
-  const handleFileFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (file) {
-      onFileSubmit(file);
+    if (text.trim()) {
+        onTextSubmit(text);
     }
   };
+  
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleTextFormSubmit(e);
+    }
+  }
 
   return (
     <Card className="shadow-md">
@@ -45,52 +47,36 @@ export function RoutineInput({ onTextSubmit, onFileSubmit, isLoading }: RoutineI
         <CardDescription>Provide your routine by pasting text or uploading a PDF.</CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs defaultValue="paste" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="paste"><ClipboardPaste className="mr-2" /> Paste Text</TabsTrigger>
-            <TabsTrigger value="upload"><Upload className="mr-2" /> Upload PDF</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="paste" className="pt-4">
-            <form onSubmit={handleTextFormSubmit} className="space-y-4">
-              <Textarea
-                placeholder="Paste your unformatted routine here..."
-                className="min-h-[200px] text-sm"
+        <form onSubmit={handleTextFormSubmit} className="relative">
+            <Textarea
+                placeholder="Paste your unformatted routine here, or upload a file..."
+                className="min-h-[120px] text-sm pr-28"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
+                onKeyDown={handleKeyDown}
                 disabled={isLoading}
-              />
-              <Button type="submit" className="w-full" disabled={isLoading || !text}>
-                {isLoading ? <Loader2 className="animate-spin" /> : <Wand2 className="mr-2" />}
-                Generate from Text
-              </Button>
-            </form>
-          </TabsContent>
-
-          <TabsContent value="upload" className="pt-4">
-             <form onSubmit={handleFileFormSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="pdf-upload">PDF File</Label>
-                  <Input 
+            />
+            <div className='absolute bottom-3 right-3 flex items-center gap-2'>
+                <input 
                     id="pdf-upload" 
                     type="file" 
                     accept="application/pdf"
                     onChange={handleFileChange}
                     ref={fileInputRef}
+                    className="hidden"
                     disabled={isLoading}
-                    className="file:text-primary file:font-semibold"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Scanned PDFs are supported. Max file size: 10MB.
-                  </p>
-                </div>
-              <Button type="submit" className="w-full" disabled={isLoading || !file}>
-                {isLoading ? <Loader2 className="animate-spin" /> : <Wand2 className="mr-2" />}
-                Generate from PDF
-              </Button>
-            </form>
-          </TabsContent>
-        </Tabs>
+                />
+                <Button type="button" variant="ghost" size="icon" onClick={handleUploadClick} disabled={isLoading} aria-label="Upload PDF">
+                    <Paperclip />
+                </Button>
+                <Button type="submit" size="icon" disabled={isLoading || !text} aria-label="Generate from Text">
+                    {isLoading ? <Loader2 className="animate-spin" /> : <Send />}
+                </Button>
+            </div>
+        </form>
+         <p className="text-xs text-muted-foreground mt-2">
+            You can also upload a scanned PDF. Press Shift+Enter for a new line.
+        </p>
       </CardContent>
     </Card>
   );

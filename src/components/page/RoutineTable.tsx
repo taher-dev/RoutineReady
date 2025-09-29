@@ -129,38 +129,28 @@ export const RoutineTable = forwardRef<RoutineTableRef, RoutineTableProps>(({ in
               const dayCourses = data[day];
               if (!dayCourses || dayCourses.length === 0) return null;
 
-              let occupiedMinutes = 0;
+              const renderedSlots = new Array(timeSlots.length).fill(false);
 
               return (
                 <TableRow key={day} className="odd:bg-card hover:bg-primary/10">
                   <TableCell className="font-bold sticky left-0 bg-inherit">{day}</TableCell>
-                  {timeSlots.map((slot) => {
-                    if (occupiedMinutes > 0) {
-                          const slotDuration = slot.end - slot.start;
-                          occupiedMinutes = Math.max(0, occupiedMinutes - slotDuration);
-                          if(occupiedMinutes > 0) return null;
-                      }
-                    
+                  {timeSlots.map((slot, slotIndex) => {
+                    if (renderedSlots[slotIndex]) return null;
+
                     const course = dayCourses.find(c => c.startTimeMinutes >= slot.start && c.startTimeMinutes < slot.end);
-
+                    
                     if (course) {
-                      const courseDuration = course.endTimeMinutes - course.startTimeMinutes;
-                      
                       let colSpan = 0;
-                      let accumulatedDuration = 0;
-                      
-                      for(const s of timeSlots) {
-                          if (s.start >= course.startTimeMinutes) {
-                              if(accumulatedDuration < courseDuration){
-                                  accumulatedDuration += (s.end - s.start);
-                                  colSpan++;
-                              } else {
-                                  break;
-                              }
-                          }
+                      let occupiedEndTime = course.startTimeMinutes;
+                      for(let i = slotIndex; i < timeSlots.length; i++) {
+                        if (occupiedEndTime < course.endTimeMinutes) {
+                          occupiedEndTime = timeSlots[i].end;
+                          colSpan++;
+                          renderedSlots[i] = true;
+                        } else {
+                          break;
+                        }
                       }
-
-                      occupiedMinutes = courseDuration - (slot.end - slot.start);
 
                       return (
                         <TableCell key={slot.start} colSpan={colSpan} className="p-0 align-top" data-course-cell>
@@ -204,6 +194,7 @@ export const RoutineTable = forwardRef<RoutineTableRef, RoutineTableProps>(({ in
                         </TableCell>
                       )
                     }
+                    renderedSlots[slotIndex] = true;
                     return (
                       <TableCell key={slot.start} className={cn(slot.isBreak && "bg-accent/10")}></TableCell>
                     );

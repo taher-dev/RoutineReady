@@ -216,6 +216,15 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
     parent?.insertBefore(container, elementToCapture);
     container.appendChild(elementToCapture);
 
+    // --- Start of fix for cropped image ---
+    const originalOverflow = elementToCapture.style.overflowX;
+    const originalWidth = elementToCapture.style.width;
+    if (viewMode === 'table') {
+      elementToCapture.style.overflowX = 'visible';
+      elementToCapture.style.width = 'max-content';
+    }
+    // --- End of fix for cropped image ---
+
     try {
         const dataUrl = await toPng(container, { 
             quality: 1.0, 
@@ -234,6 +243,13 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
             description: "Could not export to image. Please try again."
         });
     } finally {
+        // --- Restore original styles ---
+        if (viewMode === 'table') {
+            elementToCapture.style.overflowX = originalOverflow;
+            elementToCapture.style.width = originalWidth;
+        }
+        // --- End of restoring ---
+
         // Move the element back to its original parent and remove the container
         parent?.insertBefore(elementToCapture, container);
         parent?.removeChild(container);
@@ -256,3 +272,4 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
   );
 }
  
+    

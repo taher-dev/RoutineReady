@@ -182,8 +182,22 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
     }
     setIsExporting(null);
   };
+  
+  const exportToImage = async () => {
+    setIsExporting('image');
+    
+    let elementToCapture = getTargetElement();
+    if (!elementToCapture) {
+      toast({
+        variant: 'destructive',
+        title: 'Export Failed',
+        description: 'Could not find the view to capture.',
+      });
+      setIsExporting(null);
+      return;
+    }
 
-  const createPdfImageElement = (view: 'list' | 'table'): HTMLElement => {
+    // Create a temporary wrapper to style the image output
     const wrapper = document.createElement('div');
     wrapper.style.position = 'absolute';
     wrapper.style.left = '-9999px';
@@ -191,7 +205,7 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
     wrapper.style.background = 'white';
     wrapper.style.padding = '20px';
     wrapper.style.fontFamily = "'PT Sans', sans-serif";
-    wrapper.style.width = view === 'list' ? '800px' : '1200px';
+    wrapper.style.width = viewMode === 'list' ? '800px' : '1200px';
 
     const title = document.createElement('h1');
     title.innerText = 'Class Routine';
@@ -200,150 +214,13 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
     title.style.fontSize = '24px';
     wrapper.appendChild(title);
 
-    const table = document.createElement('table');
-    table.style.width = '100%';
-    table.style.borderCollapse = 'collapse';
-    const thead = document.createElement('thead');
-    const tbody = document.createElement('tbody');
-
-    const headerRow = document.createElement('tr');
-    
-    // Common styles
-    const thStyle = {
-      border: '1px solid #ddd',
-      padding: '12px',
-      backgroundColor: 'rgb(148, 211, 172)',
-      color: 'rgb(32, 56, 42)',
-      fontWeight: 'bold',
-      fontSize: '14px',
-      textAlign: 'center' as const,
-    };
-    const tdStyle = {
-      border: '1px solid #ddd',
-      padding: '10px',
-      textAlign: 'center' as const,
-      fontSize: '12px',
-      verticalAlign: 'middle' as const,
-    };
-
-
-    if (view === 'list') {
-        ['Day', 'Time', 'Course', 'Room'].forEach(headerText => {
-            const th = document.createElement('th');
-            Object.assign(th.style, thStyle);
-            th.innerText = headerText;
-            headerRow.appendChild(th);
-        });
-        thead.appendChild(headerRow);
-
-        const daysWithCourses = ALL_DAYS.filter(day => routineData[day] && routineData[day]!.length > 0);
-        daysWithCourses.forEach((day, dayIndex) => {
-            const dayCourses = routineData[day] || [];
-            dayCourses.forEach(course => {
-                const tr = document.createElement('tr');
-                 if (dayIndex % 2 === 1) {
-                    tr.style.backgroundColor = '#f5f5f5';
-                }
-                const dayCell = document.createElement('td');
-                Object.assign(dayCell.style, tdStyle);
-                dayCell.style.fontWeight = 'bold';
-                dayCell.innerText = getShortDay(day);
-
-                const timeCell = document.createElement('td');
-                Object.assign(timeCell.style, tdStyle);
-                timeCell.innerText = course.time;
-
-                const courseCell = document.createElement('td');
-                Object.assign(courseCell.style, tdStyle);
-                courseCell.style.textAlign = 'left';
-                courseCell.innerHTML = `${course.course}<br/><small>${course.title}</small>`;
-
-                const roomCell = document.createElement('td');
-                Object.assign(roomCell.style, tdStyle);
-                roomCell.innerText = course.room;
-
-                tr.appendChild(dayCell);
-                tr.appendChild(timeCell);
-                tr.appendChild(courseCell);
-                tr.appendChild(roomCell);
-                tbody.appendChild(tr);
-            });
-        });
-
-    } else { // timeline view
-        ['Day', ...timeSlots.map(slot => slot.isBreak ? 'Break' : `${formatTime(slot.start)} - ${formatTime(slot.end)}`)].forEach(headerText => {
-            const th = document.createElement('th');
-            Object.assign(th.style, thStyle);
-            th.style.fontSize = '11px';
-            th.innerText = headerText;
-            headerRow.appendChild(th);
-        });
-        thead.appendChild(headerRow);
-
-        ALL_DAYS.filter(day => routineData[day] && routineData[day]!.length > 0)
-        .forEach(day => {
-            const tr = document.createElement('tr');
-            const dayCell = document.createElement('td');
-            Object.assign(dayCell.style, tdStyle);
-            dayCell.style.fontWeight = 'bold';
-            dayCell.innerText = day;
-            tr.appendChild(dayCell);
-            
-            let occupiedUntil = 0;
-            timeSlots.forEach((slot, slotIndex) => {
-                if (occupiedUntil > slot.start) return;
-
-                const course = (routineData[day] || []).find(c => c.startTimeMinutes >= slot.start && c.startTimeMinutes < slot.end);
-
-                const cell = document.createElement('td');
-                Object.assign(cell.style, tdStyle);
-                cell.style.height = '50px';
-
-                if (course) {
-                    const courseDuration = course.endTimeMinutes - course.startTimeMinutes;
-                    let colSpan = 0;
-                    let accumulatedDuration = 0;
-                    for (let i = slotIndex; i < timeSlots.length; i++) {
-                      if (accumulatedDuration < courseDuration) {
-                        accumulatedDuration += (timeSlots[i].end - timeSlots[i].start);
-                        colSpan++;
-                      } else {
-                        break;
-                      }
-                    }
-                    occupiedUntil = course.endTimeMinutes;
-                    cell.colSpan = colSpan > 0 ? colSpan : 1;
-                    cell.innerHTML = `${course.course}<br/>${course.title}<br/>Room: ${course.room}`;
-                    cell.style.backgroundColor = 'rgb(237, 244, 239)';
-                } else {
-                    occupiedUntil = slot.end;
-                     if(slot.isBreak){
-                        cell.innerText = 'Break';
-                        cell.style.backgroundColor = '#f5f5f5';
-                    }
-                }
-                tr.appendChild(cell);
-            });
-            tbody.appendChild(tr);
-        });
-    }
-
-    table.appendChild(thead);
-    table.appendChild(tbody);
-    wrapper.appendChild(table);
+    // Clone the node to avoid moving the original from the DOM
+    const clone = elementToCapture.cloneNode(true) as HTMLElement;
+    wrapper.appendChild(clone);
     document.body.appendChild(wrapper);
-    return wrapper;
-  }
-  
-  const exportToImage = async () => {
-    setIsExporting('image');
-    
-    let elementToCapture: HTMLElement | null = null;
+
     try {
-        // Create a temporary, styled element that mimics the PDF
-        elementToCapture = createPdfImageElement(viewMode);
-        
-        const dataUrl = await toPng(elementToCapture, { 
+        const dataUrl = await toPng(wrapper, { 
             quality: 1.0, 
             pixelRatio: 2,
             backgroundColor: 'white'
@@ -360,9 +237,7 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
             description: "Could not export to image. Please try again."
         });
     } finally {
-        if(elementToCapture) {
-            document.body.removeChild(elementToCapture);
-        }
+        document.body.removeChild(wrapper);
         setIsExporting(null);
     }
 };
@@ -381,5 +256,4 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
     </div>
   );
 }
-
-    
+ 

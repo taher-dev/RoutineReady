@@ -204,7 +204,6 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
     captureContainer.style.top = '-9999px';
     captureContainer.style.padding = '20px';
     captureContainer.style.background = 'white';
-    captureContainer.style.fontFamily = "'PT Sans', sans-serif";
     
     // For timeline view, we need to make sure the container is wide enough
     if (viewMode === 'table') {
@@ -216,6 +215,7 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
     title.style.textAlign = 'center';
     title.style.marginBottom = '20px';
     title.style.fontSize = '24px';
+    title.style.fontFamily = "'PT Sans', sans-serif";
     captureContainer.appendChild(title);
 
     const clonedElement = originalElement.cloneNode(true) as HTMLElement;

@@ -23,7 +23,8 @@ const formatTime = (minutes: number) => {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   const period = h >= 12 ? 'PM' : 'AM';
-  const hour = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+  let hour = h % 12;
+  if (hour === 0) hour = 12;
   return `${hour}:${m.toString().padStart(2, '0')} ${period}`;
 };
 
@@ -124,7 +125,7 @@ export const RoutineTable = forwardRef<RoutineTableRef, RoutineTableProps>(({ in
             return (
               <TableRow key={day} className="odd:bg-card hover:bg-primary/10">
                 <TableCell className="font-bold sticky left-0 bg-inherit">{day}</TableCell>
-                {timeSlots.map(slot => {
+                {timeSlots.map((slot, slotIndex) => {
                   if (occupiedSlots > 0) {
                     occupiedSlots--;
                     return null;
@@ -132,12 +133,12 @@ export const RoutineTable = forwardRef<RoutineTableRef, RoutineTableProps>(({ in
                   
                   const course = dayCourses.find(c => c.startTimeMinutes === slot);
                   if (course) {
-                    const durationSlots = (course.endTimeMinutes - course.startTimeMinutes) / 30;
+                    const durationSlots = Math.round((course.endTimeMinutes - course.startTimeMinutes) / 30);
                     occupiedSlots = durationSlots - 1;
                     return (
-                      <TableCell key={slot} colSpan={durationSlots} className="p-0">
-                        <div className="h-full w-full bg-primary/10 rounded-md p-2 border border-primary/20 shadow-sm">
-                          {Object.keys(course).map(key => {
+                      <TableCell key={slot} colSpan={durationSlots} className="p-0 align-top">
+                        <div className="h-full w-full bg-primary/10 rounded-md p-2 border border-primary/20 shadow-sm flex flex-col justify-center">
+                          {[ 'course', 'title', 'room' ].map(key => {
                              const field = key as keyof Course;
                              if (['id', 'startTimeMinutes', 'endTimeMinutes', 'time'].includes(field)) return null;
                             
@@ -150,8 +151,11 @@ export const RoutineTable = forwardRef<RoutineTableRef, RoutineTableProps>(({ in
                                 value={editValue}
                                 onChange={(e) => setEditValue(e.target.value)}
                                 onBlur={handleUpdate}
-                                onKeyDown={(e) => e.key === 'Enter' && handleUpdate()}
-                                className="h-6 text-xs p-1"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleUpdate();
+                                    if (e.key === 'Escape') setEditingCell(null);
+                                }}
+                                className="h-6 text-xs p-1 my-0.5"
                               />
                              ) : (
                               <p
@@ -160,11 +164,11 @@ export const RoutineTable = forwardRef<RoutineTableRef, RoutineTableProps>(({ in
                                 className={cn(
                                   "cursor-pointer hover:bg-primary/20 rounded px-1 transition-colors",
                                   field === 'course' && 'font-bold text-primary-foreground',
-                                  field === 'title' && 'text-sm text-foreground/90',
+                                  field === 'title' && 'text-sm text-foreground/90 truncate',
                                   field === 'room' && 'text-xs text-muted-foreground'
                                 )}
                               >
-                                {course[field]}
+                                {field === 'room' && course[field] ? `Room: ${course[field]}` : course[field]}
                               </p>
                              )
                           })}

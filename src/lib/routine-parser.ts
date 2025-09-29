@@ -44,7 +44,7 @@ const parseV2 = (lines: string[]): RoutineData | null => {
     let lastCourseInfo: { code: string; title: string; section: string } | null = null;
     
     // Regex for a line that starts a new course entry
-    const newCourseRegex = /([A-Z]{3,}\s*\d{1,3}[A-Z]?)-[A-Z]+\(\d+\)\s+.*\s+[A-Z]{3,}/i;
+    const newCourseRegex = /([A-Z]{3,}\s*\d{1,3}[A-Z]?)-.*\s+.*\s+[A-Z]{3,}/i;
 
     for (const line of lines) {
         // Updated regex to be more flexible with whitespace and capture all parts
@@ -147,7 +147,13 @@ export const parseRoutineText = (text: string): RoutineData => {
   
   if (lines.length > 0 && lines[0].toLowerCase().includes('formal code')) {
     const parsedData = parseV2(lines);
-    if (parsedData) return parsedData;
+    if (parsedData) {
+        // Sort courses by start time for each day
+      for (const day in parsedData) {
+        parsedData[day as Day]?.sort((a, b) => a.startTimeMinutes - b.startTimeMinutes);
+      }
+      return parsedData;
+    }
   }
 
   const routine = parseV1(lines);

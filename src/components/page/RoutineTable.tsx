@@ -15,7 +15,7 @@ export interface RoutineTableRef {
   getElement: () => HTMLDivElement | null;
 }
 
-const timeSlots = Array.from({ length: 22 }, (_, i) => 8 * 60 + i * 30); // 8:00 AM to 6:30 PM in 30min intervals
+const timeSlots = Array.from({ length: 17 }, (_, i) => (8 * 60 + 30) + i * 30); // 8:30 AM to 4:30 PM in 30min intervals
 const breakTimeStart = 13 * 60; // 1:00 PM
 const breakTimeEnd = 13 * 60 + 30; // 1:30 PM
 

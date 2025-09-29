@@ -183,11 +183,11 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
     setIsExporting(null);
   };
   
-  const exportToImage = async () => {
+const exportToImage = async () => {
     setIsExporting('image');
     
-    const originalElement = getTargetElement();
-    if (!originalElement) {
+    const elementToCapture = getTargetElement();
+    if (!elementToCapture) {
       toast({
         variant: 'destructive',
         title: 'Export Failed',
@@ -197,33 +197,20 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
       return;
     }
 
-    const captureContainer = document.createElement('div');
-    captureContainer.id = 'image-capture-container';
-    captureContainer.style.position = 'absolute';
-    captureContainer.style.left = '-9999px'; // Position off-screen
-    captureContainer.style.top = '-9999px';
-    captureContainer.style.padding = '20px';
-    captureContainer.style.background = 'white';
-    
-    // For timeline view, we need to make sure the container is wide enough
-    if (viewMode === 'table') {
-        captureContainer.style.width = 'max-content';
-    }
-    
-    const title = document.createElement('h1');
-    title.innerText = 'Class Routine';
-    title.style.textAlign = 'center';
-    title.style.marginBottom = '20px';
-    title.style.fontSize = '24px';
-    title.style.fontFamily = "'PT Sans', sans-serif";
-    captureContainer.appendChild(title);
+    // For timeline view, we need to handle the horizontal overflow
+    const parentContainer = viewMode === 'table' ? elementToCapture.parentElement : null;
+    const originalStyles = {
+        overflow: parentContainer?.style.overflow || '',
+        width: parentContainer?.style.width || ''
+    };
 
-    const clonedElement = originalElement.cloneNode(true) as HTMLElement;
-    captureContainer.appendChild(clonedElement);
-    document.body.appendChild(captureContainer);
-    
     try {
-        const dataUrl = await toPng(captureContainer, { 
+        if (parentContainer) {
+            parentContainer.style.overflow = 'visible';
+            parentContainer.style.width = 'max-content';
+        }
+    
+        const dataUrl = await toPng(elementToCapture, { 
             quality: 1.0, 
             pixelRatio: 2,
             backgroundColor: 'white'
@@ -240,7 +227,10 @@ export function ExportButtons({ routineData, viewMode, getTargetElement }: Expor
             description: "Could not export to image. Please try again."
         });
     } finally {
-        document.body.removeChild(captureContainer);
+        if (parentContainer) {
+            parentContainer.style.overflow = originalStyles.overflow;
+            parentContainer.style.width = originalStyles.width;
+        }
         setIsExporting(null);
     }
 };

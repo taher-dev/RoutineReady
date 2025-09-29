@@ -108,111 +108,112 @@ export const RoutineTable = forwardRef<RoutineTableRef, RoutineTableProps>(({ in
   }, [data]);
 
   return (
-    <div ref={tableContainerRef} className="border rounded-lg overflow-x-auto relative">
-      <Table className="min-w-max">
-        <TableHeader className="bg-primary/20 sticky top-0 z-10 backdrop-blur-sm">
-          <TableRow>
-            <TableHead className="w-32 font-semibold text-primary-foreground">Day</TableHead>
-            {timeSlots.map(slot => (
-              <TableHead key={slot.start} className={cn(
-                "w-48 text-center font-semibold text-primary-foreground/80",
-                slot.isBreak && "bg-accent/20 w-24"
-              )}>
-                {slot.isBreak ? 'Break' : `${formatTime(slot.start)} - ${formatTime(slot.end)}`}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {ALL_DAYS.map(day => {
-            const dayCourses = data[day];
-            if (!dayCourses || dayCourses.length === 0) return null;
+    <div ref={tableContainerRef} className="border rounded-lg relative">
+      <div className="overflow-x-auto">
+        <Table className="min-w-max">
+          <TableHeader className="bg-primary/20 sticky top-0 z-10 backdrop-blur-sm">
+            <TableRow>
+              <TableHead className="w-32 font-semibold text-primary-foreground">Day</TableHead>
+              {timeSlots.map(slot => (
+                <TableHead key={slot.start} className={cn(
+                  "w-48 text-center font-semibold text-primary-foreground/80",
+                  slot.isBreak && "bg-accent/20 w-24"
+                )}>
+                  {slot.isBreak ? 'Break' : `${formatTime(slot.start)} - ${formatTime(slot.end)}`}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {ALL_DAYS.map(day => {
+              const dayCourses = data[day];
+              if (!dayCourses || dayCourses.length === 0) return null;
 
-            let occupiedSlots = 0;
-            let occupiedMinutes = 0;
+              let occupiedMinutes = 0;
 
-            return (
-              <TableRow key={day} className="odd:bg-card hover:bg-primary/10">
-                <TableCell className="font-bold sticky left-0 bg-inherit">{day}</TableCell>
-                {timeSlots.map((slot) => {
-                   if (occupiedMinutes > 0) {
-                        const slotDuration = slot.end - slot.start;
-                        occupiedMinutes = Math.max(0, occupiedMinutes - slotDuration);
-                        if(occupiedMinutes > 0) return null;
-                    }
-                  
-                  const course = dayCourses.find(c => c.startTimeMinutes >= slot.start && c.startTimeMinutes < slot.end);
-
-                  if (course) {
-                    const courseDuration = course.endTimeMinutes - course.startTimeMinutes;
+              return (
+                <TableRow key={day} className="odd:bg-card hover:bg-primary/10">
+                  <TableCell className="font-bold sticky left-0 bg-inherit">{day}</TableCell>
+                  {timeSlots.map((slot) => {
+                    if (occupiedMinutes > 0) {
+                          const slotDuration = slot.end - slot.start;
+                          occupiedMinutes = Math.max(0, occupiedMinutes - slotDuration);
+                          if(occupiedMinutes > 0) return null;
+                      }
                     
-                    let colSpan = 0;
-                    let accumulatedDuration = 0;
-                    
-                    for(const s of timeSlots) {
-                        if (s.start >= course.startTimeMinutes) {
-                            if(accumulatedDuration < courseDuration){
-                                accumulatedDuration += (s.end - s.start);
-                                colSpan++;
-                            } else {
-                                break;
-                            }
-                        }
+                    const course = dayCourses.find(c => c.startTimeMinutes >= slot.start && c.startTimeMinutes < slot.end);
+
+                    if (course) {
+                      const courseDuration = course.endTimeMinutes - course.startTimeMinutes;
+                      
+                      let colSpan = 0;
+                      let accumulatedDuration = 0;
+                      
+                      for(const s of timeSlots) {
+                          if (s.start >= course.startTimeMinutes) {
+                              if(accumulatedDuration < courseDuration){
+                                  accumulatedDuration += (s.end - s.start);
+                                  colSpan++;
+                              } else {
+                                  break;
+                              }
+                          }
+                      }
+
+                      occupiedMinutes = courseDuration - (slot.end - slot.start);
+
+                      return (
+                        <TableCell key={slot.start} colSpan={colSpan} className="p-0 align-top" data-course-cell>
+                          <div className="h-full w-full bg-primary/10 rounded-md p-2 border border-primary/20 shadow-sm flex flex-col justify-center">
+                            {[ 'course', 'title', 'room' ].map(key => {
+                              const field = key as keyof Course;
+                              if (['id', 'startTimeMinutes', 'endTimeMinutes', 'time'].includes(field)) return null;
+                              
+                              const isEditing = editingCell?.courseId === course.id && editingCell?.field === field;
+
+                              return isEditing ? (
+                                <Input
+                                  ref={inputRef}
+                                  key={field}
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  onBlur={handleUpdate}
+                                  onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleUpdate();
+                                      if (e.key === 'Escape') setEditingCell(null);
+                                  }}
+                                  className="h-6 text-xs p-1 my-0.5"
+                                />
+                              ) : (
+                                <p
+                                  key={field}
+                                  onClick={() => handleCellClick(course, field)}
+                                  data-course-field={field}
+                                  className={cn(
+                                    "cursor-pointer hover:bg-primary/20 rounded px-1 transition-colors",
+                                    field === 'course' && 'font-bold text-primary-foreground',
+                                    field === 'title' && 'text-sm text-foreground/90 truncate',
+                                    field === 'room' && 'text-xs text-muted-foreground'
+                                  )}
+                                >
+                                  {field === 'room' && course[field] ? `Room: ${course[field]}` : course[field]}
+                                </p>
+                              )
+                            })}
+                          </div>
+                        </TableCell>
+                      )
                     }
-
-                    occupiedMinutes = courseDuration - (slot.end - slot.start);
-
                     return (
-                      <TableCell key={slot.start} colSpan={colSpan} className="p-0 align-top" data-course-cell>
-                        <div className="h-full w-full bg-primary/10 rounded-md p-2 border border-primary/20 shadow-sm flex flex-col justify-center">
-                          {[ 'course', 'title', 'room' ].map(key => {
-                             const field = key as keyof Course;
-                             if (['id', 'startTimeMinutes', 'endTimeMinutes', 'time'].includes(field)) return null;
-                            
-                             const isEditing = editingCell?.courseId === course.id && editingCell?.field === field;
-
-                             return isEditing ? (
-                              <Input
-                                ref={inputRef}
-                                key={field}
-                                value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
-                                onBlur={handleUpdate}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleUpdate();
-                                    if (e.key === 'Escape') setEditingCell(null);
-                                }}
-                                className="h-6 text-xs p-1 my-0.5"
-                              />
-                             ) : (
-                              <p
-                                key={field}
-                                onClick={() => handleCellClick(course, field)}
-                                data-course-field={field}
-                                className={cn(
-                                  "cursor-pointer hover:bg-primary/20 rounded px-1 transition-colors",
-                                  field === 'course' && 'font-bold text-primary-foreground',
-                                  field === 'title' && 'text-sm text-foreground/90 truncate',
-                                  field === 'room' && 'text-xs text-muted-foreground'
-                                )}
-                              >
-                                {field === 'room' && course[field] ? `Room: ${course[field]}` : course[field]}
-                              </p>
-                             )
-                          })}
-                        </div>
-                      </TableCell>
-                    )
-                  }
-                  return (
-                    <TableCell key={slot.start} className={cn(slot.isBreak && "bg-accent/10")}></TableCell>
-                  );
-                })}
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+                      <TableCell key={slot.start} className={cn(slot.isBreak && "bg-accent/10")}></TableCell>
+                    );
+                  })}
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 });

@@ -4,7 +4,7 @@ import { useState, useRef, useMemo } from 'react';
 import { Header } from '@/components/page/Header';
 import { RoutineInput } from '@/components/page/RoutineInput';
 import { RoutineTable, type RoutineTableRef } from '@/components/page/RoutineTable';
-import { RoutineList } from '@/components/page/RoutineList';
+import { RoutineList, type RoutineListRef } from '@/components/page/RoutineList';
 import { ExportButtons } from '@/components/page/ExportButtons';
 import { RoutineData } from '@/lib/types';
 import { enhanceOcrAccuracy } from '@/lib/actions';
@@ -22,6 +22,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'list'>('table');
   const tableRef = useRef<RoutineTableRef>(null);
+  const listRef = useRef<RoutineListRef>(null);
   const { toast } = useToast();
 
   const handleTextSubmit = async (text: string) => {
@@ -107,6 +108,13 @@ export default function Home() {
   };
 
   const hasData = useMemo(() => routineData && Object.keys(routineData).some(day => routineData[day as keyof RoutineData]?.length ?? 0 > 0), [routineData]);
+  
+  const getTargetElement = () => {
+    if (viewMode === 'table') {
+      return tableRef.current?.getElement() || null;
+    }
+    return listRef.current?.getElement() || null;
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -151,7 +159,11 @@ export default function Home() {
                   <Button variant="outline" size="icon" onClick={() => setViewMode(viewMode === 'table' ? 'list' : 'table')}>
                     {viewMode === 'table' ? <List /> : <Table />}
                   </Button>
-                  <ExportButtons routineData={routineData} viewMode={viewMode} />
+                  <ExportButtons 
+                    routineData={routineData} 
+                    viewMode={viewMode}
+                    getTargetElement={getTargetElement}
+                  />
                 </div>
               </CardHeader>
               <CardContent>
@@ -162,7 +174,7 @@ export default function Home() {
                     onUpdate={setRoutineData}
                   />
                 ) : (
-                  <RoutineList routineData={routineData} />
+                  <RoutineList ref={listRef} routineData={routineData} />
                 )}
               </CardContent>
             </Card>

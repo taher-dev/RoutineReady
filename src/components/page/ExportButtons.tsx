@@ -3,12 +3,13 @@
 
 import { RoutineData, ALL_DAYS, Day } from "@/lib/types";
 import { Button } from "../ui/button";
-import { FileDown, FileText, Loader2 } from "lucide-react";
+import { FileDown, FileText, ImageIcon, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { toPng } from 'html-to-image';
 import type { UserOptions } from 'jspdf-autotable';
 
 // These should be imported from RoutineTable or a shared lib, but for simplicity, we define them here.
@@ -38,11 +39,12 @@ const getShortDay = (day: Day): string => {
 interface ExportButtonsProps {
   routineData: RoutineData;
   viewMode: 'table' | 'list';
+  getTargetElement: () => HTMLElement | null;
 }
 
 
-export function ExportButtons({ routineData, viewMode }: ExportButtonsProps) {
-  const [isExporting, setIsExporting] = useState<null | 'pdf' | 'excel'>(null);
+export function ExportButtons({ routineData, viewMode, getTargetElement }: ExportButtonsProps) {
+  const [isExporting, setIsExporting] = useState<null | 'pdf' | 'excel' | 'image'>(null);
   const { toast } = useToast();
 
   const exportListViewToPDF = () => {
@@ -279,6 +281,36 @@ export function ExportButtons({ routineData, viewMode }: ExportButtonsProps) {
     }
     setIsExporting(null);
   };
+  
+  const exportToImage = async () => {
+    const element = getTargetElement();
+    if (!element) {
+        toast({
+            variant: 'destructive',
+            title: "Export Failed",
+            description: "Could not find the routine element to capture."
+        });
+        return;
+    }
+
+    setIsExporting('image');
+    try {
+        const dataUrl = await toPng(element);
+        const link = document.createElement('a');
+        link.download = `routine-${viewMode}.png`;
+        link.href = dataUrl;
+        link.click();
+    } catch (error) {
+        console.error("Image Export Error:", error);
+        toast({
+            variant: 'destructive',
+            title: "Export Failed",
+            description: "Could not export to image. Please try again."
+        });
+    }
+    setIsExporting(null);
+};
+
 
   return (
     <div className="flex items-center gap-2">
@@ -289,6 +321,10 @@ export function ExportButtons({ routineData, viewMode }: ExportButtonsProps) {
       <Button onClick={exportToExcel} variant="outline" size="sm" disabled={!!isExporting}>
         {isExporting === 'excel' ? <Loader2 className="animate-spin" /> : <FileText />}
         Export Excel
+      </Button>
+       <Button onClick={exportToImage} variant="outline" size="sm" disabled={!!isExporting}>
+        {isExporting === 'image' ? <Loader2 className="animate-spin" /> : <ImageIcon />}
+        Export Image
       </Button>
     </div>
   );

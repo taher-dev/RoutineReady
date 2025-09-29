@@ -2,16 +2,27 @@
 
 import { RoutineData, ALL_DAYS, Day } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { forwardRef, useImperativeHandle, useRef } from "react";
 
 interface RoutineListProps {
     routineData: RoutineData;
+}
+
+export interface RoutineListRef {
+  getElement: () => HTMLDivElement | null;
 }
 
 const getShortDay = (day: Day): string => {
     return day.substring(0, 3).toUpperCase();
 }
 
-export function RoutineList({ routineData }: RoutineListProps) {
+export const RoutineList = forwardRef<RoutineListRef, RoutineListProps>(({ routineData }, ref) => {
+    const listContainerRef = useRef<HTMLDivElement>(null);
+
+    useImperativeHandle(ref, () => ({
+        getElement: () => listContainerRef.current,
+    }));
+
     const daysWithCourses = ALL_DAYS.filter(day => routineData[day] && routineData[day]!.length > 0);
     
     if (daysWithCourses.length === 0) {
@@ -23,7 +34,7 @@ export function RoutineList({ routineData }: RoutineListProps) {
     }
 
     return (
-        <div className="space-y-6">
+        <div ref={listContainerRef} className="space-y-6 bg-card p-4 rounded-lg">
             {daysWithCourses.map(day => (
                 <div key={day}>
                     <h2 className="text-xl font-bold mb-3 border-b pb-2">{day}</h2>
@@ -45,4 +56,6 @@ export function RoutineList({ routineData }: RoutineListProps) {
             ))}
         </div>
     );
-}
+});
+
+RoutineList.displayName = 'RoutineList';
